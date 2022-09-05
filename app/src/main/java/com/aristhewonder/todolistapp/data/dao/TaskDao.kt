@@ -2,6 +2,7 @@ package com.aristhewonder.todolistapp.data.dao
 
 import androidx.room.*
 import com.aristhewonder.todolistapp.data.entity.CategoryWithTasks
+import com.aristhewonder.todolistapp.data.entity.Task
 import com.aristhewonder.todolistapp.data.entity.TaskCategory
 import kotlinx.coroutines.flow.Flow
 
@@ -13,6 +14,12 @@ interface TaskDao {
     fun getCategoriesWithTasks(): Flow<List<CategoryWithTasks>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertCategory(category: TaskCategory)
+    suspend fun insertCategory(category: TaskCategory): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTask(task: Task)
+
+    @Update
+    suspend fun updateTask(task: Task)
 
 }

@@ -9,7 +9,7 @@ import java.text.DateFormat
 @Parcelize
 @Entity(tableName = "task_category_table")
 data class TaskCategory(
-    @PrimaryKey(autoGenerate = true) val categoryId: Int = 0,
+    @PrimaryKey(autoGenerate = true) val categoryId: Long = 0,
     val name: String,
     val creationDate: Long = System.currentTimeMillis()
 ): Parcelable {

@@ -9,9 +9,9 @@ import java.text.DateFormat
 @Parcelize
 @Entity(tableName = "task_table")
 data class Task(
-    @PrimaryKey(autoGenerate = true) val taskId: Int = 0,
+    @PrimaryKey(autoGenerate = true) val taskId: Long = 0,
     val name: String,
-    val categoryId: Int,
+    val categoryId: Long,
     val completed: Boolean = false,
     val stared: Boolean = false,
     val creationDate: Long = System.currentTimeMillis()
