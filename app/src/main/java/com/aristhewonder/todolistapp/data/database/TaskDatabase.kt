@@ -24,6 +24,7 @@ abstract class TaskDatabase: RoomDatabase() {
             super.onCreate(db)
             val dao = database.get().taskDao()
             coroutineScope.launch {
+                dao.insertCategory(TaskCategory(name = "Stared"))
                 val id1 = dao.insertCategory(TaskCategory(name = "List #1"))
                 val id2 = dao.insertCategory(TaskCategory(name = "List #2"))
                 val id3 = dao.insertCategory(TaskCategory(name = "List #3"))

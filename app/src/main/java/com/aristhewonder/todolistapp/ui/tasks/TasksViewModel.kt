@@ -16,22 +16,30 @@ class TasksViewModel @ViewModelInject constructor(
     private val repository: TaskRepository
 ) : ViewModel() {
 
-    private val categoriesWithTasks = repository.getAll()
-    val categories = categoriesWithTasks.map { items ->
-        items.map {
-            it.category
+    companion object {
+        const val STARED_CATEGORY = 1L
+    }
+
+    private val categoriesWithTasks by lazy { repository.getAll() }
+    val categories by lazy {
+        categoriesWithTasks.map { items ->
+            items.map {
+                it.category
+            }
         }
     }
     var selectedCategory = mutableStateOf<TaskCategory?>(null)
     val tasks: Flow<List<Task>>
         get() {
-            return categoriesWithTasks.map { items ->
-                items.first {
-                    it.category.categoryId == selectedCategory.value?.categoryId
-                }.tasks.filter { !it.completed }.sortedByDescending { it.creationDateFormatted }
+            val selectedCategoryId = selectedCategory.value!!.categoryId
+            val staredCategorySelected = selectedCategoryId == STARED_CATEGORY
+
+            return if (staredCategorySelected) {
+                filterTasksByStared()
+            } else {
+                filterTasksByCategoryId(categoryId = selectedCategoryId)
             }
         }
-
 
     fun selectCategory(category: TaskCategory) {
         this.selectedCategory.value = category
@@ -54,5 +62,22 @@ class TasksViewModel @ViewModelInject constructor(
             repository.updateTask(task)
         }
     }
+
+    private fun filterTasksByStared(): Flow<List<Task>> =
+        categoriesWithTasks.map { items ->
+            items.asSequence().map {
+                it.tasks
+            }.flatten()
+                .filter { it.stared }
+                .filter { !it.completed }
+                .sortedByDescending { it.creationDateFormatted }.toList()
+        }
+
+    private fun filterTasksByCategoryId(categoryId: Long): Flow<List<Task>> =
+        categoriesWithTasks.map { items ->
+            items.first {
+                it.category.categoryId == categoryId
+            }.tasks.filter { !it.completed }.sortedByDescending { it.creationDateFormatted }
+        }
 
 }
