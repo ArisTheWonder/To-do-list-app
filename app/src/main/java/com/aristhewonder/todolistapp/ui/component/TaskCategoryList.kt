@@ -6,6 +6,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
@@ -17,7 +21,8 @@ import com.aristhewonder.todolistapp.data.entity.TaskCategory
 fun TaskCategoryList(
     categories: List<TaskCategory>,
     modifier: Modifier,
-    onItemClick: (category: TaskCategory) -> Unit
+    onItemClick: (category: TaskCategory) -> Unit,
+    onNewListClicked: () -> Unit
 ) {
     val scrollState = rememberLazyListState()
     LazyRow(
@@ -32,6 +37,11 @@ fun TaskCategoryList(
                 category, onClick = onItemClick,
                 modifier = Modifier.animateItemPlacement()
             )
+        }
+        item {
+            IconButton(onClick = onNewListClicked) {
+                Icon(imageVector = Icons.Default.Add, contentDescription = "New list")
+            }
         }
     }
 

@@ -1,4 +1,4 @@
-package com.aristhewonder.todolistapp.util
+package com.aristhewonder.todolistapp.util.extension
 
 fun <T> List<T>.second(): T {
     if (isEmpty())

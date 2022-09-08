@@ -1,4 +1,4 @@
-package com.aristhewonder.todolistapp.util
+package com.aristhewonder.todolistapp.util.extension
 
 fun <T> T.isNotNull(): Boolean {
     return this != null

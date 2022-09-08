@@ -13,6 +13,14 @@ class TaskRepository @Inject constructor(private val taskDao: TaskDao) {
         taskDao.insertCategory(category)
     }
 
+    suspend fun updateCategory(category: TaskCategory) {
+        taskDao.updateCategory(category)
+    }
+
+    suspend fun deleteCategory(category: TaskCategory) {
+        taskDao.deleteCategory(category)
+    }
+
     suspend fun insertTask(task: Task) {
         taskDao.insertTask(task)
     }

@@ -8,5 +8,20 @@
     <fragment
         android:id="@+id/tasksFragment"
         android:name="com.aristhewonder.todolistapp.ui.tasks.TasksFragment"
-        android:label="fragment_tasks" />
+        android:label="fragment_tasks" >
+        <action
+            android:id="@+id/action_tasksFragment_to_editTaskCategoryFragment"
+            app:destination="@id/editTaskCategoryFragment" />
+        <action
+            android:id="@+id/action_tasksFragment_to_addTaskCategoryFragment"
+            app:destination="@id/addTaskCategoryFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/editTaskCategoryFragment"
+        android:name="com.aristhewonder.todolistapp.ui.taskCategory.EditTaskCategoryFragment"
+        android:label="EditTaskCategoryFragment" />
+    <fragment
+        android:id="@+id/addTaskCategoryFragment"
+        android:name="com.aristhewonder.todolistapp.ui.taskCategory.AddTaskCategoryFragment"
+        android:label="AddTaskCategoryFragment" />
 </navigation>

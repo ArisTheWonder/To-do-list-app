@@ -16,6 +16,12 @@ interface TaskDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCategory(category: TaskCategory): Long
 
+    @Update
+    suspend fun updateCategory(category: TaskCategory)
+
+    @Delete
+    suspend fun deleteCategory(category: TaskCategory)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTask(task: Task)
 

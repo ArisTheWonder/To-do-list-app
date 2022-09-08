@@ -2,34 +2,35 @@ package com.aristhewonder.todolistapp.ui.tasks
 
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.remember
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import com.aristhewonder.todolistapp.data.entity.Task
-import com.aristhewonder.todolistapp.data.entity.TaskCategory
+import androidx.navigation.fragment.findNavController
+import com.aristhewonder.todolistapp.R
 import com.aristhewonder.todolistapp.ui.component.EmptyState
 import com.aristhewonder.todolistapp.ui.component.TaskCategoryList
+import com.aristhewonder.todolistapp.ui.component.TaskCategoryOptionsDropdownMenu
 import com.aristhewonder.todolistapp.ui.component.TaskList
 import com.aristhewonder.todolistapp.ui.ui.theme.ToDoListAppTheme
-import com.aristhewonder.todolistapp.util.isNotNull
-import com.aristhewonder.todolistapp.util.isNull
-import com.aristhewonder.todolistapp.util.second
+import com.aristhewonder.todolistapp.util.Keys
+import com.aristhewonder.todolistapp.util.extension.isNotNull
+import com.aristhewonder.todolistapp.util.extension.isNull
+import com.aristhewonder.todolistapp.util.extension.second
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.DateFormat
 
@@ -49,19 +50,40 @@ class TasksFragment : Fragment() {
             setContent {
                 ToDoListAppTheme {
                     Surface(modifier = Modifier.fillMaxSize()) {
-                        Scaffold {
+                        var showMenu by remember { mutableStateOf(false) }
+                        Scaffold(
+                            topBar = {
+                                TopAppBar(
+                                    title = { Text(text = "Tasks") },
+                                    actions = {
+                                        IconButton(onClick = { showMenu = !showMenu }) {
+                                            Icon(Icons.Default.MoreVert, "")
+                                        }
+                                        TaskCategoryOptionsDropdownMenu(
+                                            showMenu = showMenu,
+                                            onDismissRequest = { showMenu = false },
+                                            onRenameItemClicked = { navigateToEditTaskCategoryFragment() },
+                                            onRemoveItemClicked = {
+                                                showMenu = false
+                                                viewModel.onDeleteSelectedTaskCategory()
+                                            },
+                                            onNewListClicked = { navigateToAddTaskCategoryFragment() })
+                                    }
+
+                                )
+                            }
+                        ) {
                             Box(
                                 modifier = Modifier.fillMaxSize()
                             ) {
+
                                 Categories(
-                                    categories = collectCategoriesAsState().value,
                                     modifier = Modifier.align(Alignment.TopCenter)
                                 )
 
                                 //Make sure a category is selected.
                                 if (viewModel.selectedCategory.value.isNotNull()) {
                                     Tasks(
-                                        tasks = collectTasksAsState().value,
                                         modifier = Modifier
                                             .align(Alignment.Center)
                                             .fillMaxSize()
@@ -82,13 +104,6 @@ class TasksFragment : Fragment() {
                                         }) {
                                         Text(text = "Create new task")
                                     }
-
-                                    Button(
-                                        onClick = {
-                                            viewModel.insertTaskCategory("New list")
-                                        }) {
-                                        Text(text = "Create new List")
-                                    }
                                 }
                             }
 
@@ -101,35 +116,26 @@ class TasksFragment : Fragment() {
     }
 
     @Composable
-    fun Categories(
-        categories: List<TaskCategory>,
-        modifier: Modifier
-    ) {
+    fun Categories(modifier: Modifier) {
+        val categories = viewModel.categories.collectAsState(initial = emptyList()).value
         with(categories) {
             if (isNotEmpty()) {
-                if (viewModel.selectedCategory.value.isNull()) {
-                    viewModel.selectCategory(second())
-                }
                 TaskCategoryList(
                     categories = this,
-                    modifier = modifier
-                ) {
-                    viewModel.selectCategory(category = it)
-                }
+                    modifier = modifier,
+                    onItemClick = {
+                        viewModel.onCategorySelected(category = it)
+                    },
+                    onNewListClicked = { navigateToAddTaskCategoryFragment() }
+                )
             }
         }
     }
 
-    @Composable
-    private fun collectCategoriesAsState() =
-        viewModel.categories.collectAsState(initial = emptyList())
 
     @Composable
-    fun Tasks(
-        tasks: List<Task>,
-        modifier: Modifier
-    ) {
-
+    fun Tasks(modifier: Modifier) {
+        val tasks = viewModel.tasks.collectAsState(initial = emptyList()).value
         with(tasks) {
             if (isEmpty()) {
                 EmptyState(message = "No tasks yet.", modifier = modifier)
@@ -148,8 +154,16 @@ class TasksFragment : Fragment() {
         }
     }
 
-    @Composable
-    private fun collectTasksAsState() =
-        viewModel.tasks.collectAsState(initial = emptyList())
+    private fun navigateToAddTaskCategoryFragment() {
+        findNavController().navigate(R.id.action_tasksFragment_to_addTaskCategoryFragment)
+    }
+
+    private fun navigateToEditTaskCategoryFragment() {
+        viewModel.selectedCategory.value.let { taskCategory ->
+            val destination = R.id.action_tasksFragment_to_editTaskCategoryFragment
+            val bundle = bundleOf(Keys.TASK_CATEGORY to taskCategory)
+            findNavController().navigate(destination, bundle)
+        }
+    }
 
 }

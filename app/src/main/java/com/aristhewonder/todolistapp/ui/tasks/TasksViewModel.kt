@@ -7,13 +7,17 @@ import androidx.lifecycle.viewModelScope
 import com.aristhewonder.todolistapp.data.entity.Task
 import com.aristhewonder.todolistapp.data.entity.TaskCategory
 import com.aristhewonder.todolistapp.data.repository.TaskRepository
+import com.aristhewonder.todolistapp.util.PreferencesManager
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 
 class TasksViewModel @ViewModelInject constructor(
-    private val repository: TaskRepository
+    private val repository: TaskRepository,
+    private val preferencesManager: PreferencesManager
 ) : ViewModel() {
 
     companion object {
@@ -28,6 +32,14 @@ class TasksViewModel @ViewModelInject constructor(
             }
         }
     }
+
+
+    init {
+        combine(categories, preferencesManager.preferencesFlow) {categories, index->
+            selectedCategory.value = categories[index]
+        }
+    }
+
     var selectedCategory = mutableStateOf<TaskCategory?>(null)
     val tasks: Flow<List<Task>>
         get() {
@@ -41,13 +53,20 @@ class TasksViewModel @ViewModelInject constructor(
             }
         }
 
-    fun selectCategory(category: TaskCategory) {
+    fun onCategorySelected(category: TaskCategory) {
         this.selectedCategory.value = category
+        updateSelectedTaskCategoryIndex(index = 1)
     }
 
-    fun insertTaskCategory(categoryName: String) {
-        viewModelScope.launch {
-            repository.insertCategory(TaskCategory(name = categoryName))
+    fun onDeleteSelectedTaskCategory() {
+        this.selectedCategory.value?.let { taskCategory ->
+            if (taskCategory.reserved) {
+                TODO("update view")
+                return@let
+            }
+            viewModelScope.launch {
+                repository.deleteCategory(category = taskCategory)
+            }
         }
     }
 
@@ -60,6 +79,12 @@ class TasksViewModel @ViewModelInject constructor(
     fun updateTask(task: Task) {
         viewModelScope.launch {
             repository.updateTask(task)
+        }
+    }
+
+    private fun updateSelectedTaskCategoryIndex(index: Int) {
+        viewModelScope.launch {
+            preferencesManager.updateSelectedTaskCategoryIndex(index)
         }
     }
 

@@ -12,7 +12,8 @@ import java.text.DateFormat
 data class TaskCategory(
     @PrimaryKey(autoGenerate = true) val categoryId: Long = 0,
     val name: String,
-    val creationDate: Long = System.currentTimeMillis()
+    val creationDate: Long = System.currentTimeMillis(),
+    val reserved: Boolean = false
 ): Parcelable {
     val creationDateFormatted: String
         get() = DateFormat.getDateTimeInstance().format(this.creationDate)
