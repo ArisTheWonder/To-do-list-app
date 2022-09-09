@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 @Composable
 fun TaskCategoryOptionsDropdownMenu(
     showMenu: Boolean,
+    actionAllowed: Boolean,
     onDismissRequest: () -> Unit,
     onRenameItemClicked: () -> Unit,
     onRemoveItemClicked: () -> Unit,
@@ -17,10 +18,10 @@ fun TaskCategoryOptionsDropdownMenu(
         expanded = showMenu,
         onDismissRequest = onDismissRequest,
     ) {
-        DropdownMenuItem(onClick = onRenameItemClicked) {
+        DropdownMenuItem(onClick = onRenameItemClicked, enabled = actionAllowed) {
             Text(text = "Rename list")
         }
-        DropdownMenuItem(onClick = onRemoveItemClicked) {
+        DropdownMenuItem(onClick = onRemoveItemClicked, enabled = actionAllowed) {
             Text(text = "Remove list")
         }
         DropdownMenuItem(onClick = onNewListClicked) {

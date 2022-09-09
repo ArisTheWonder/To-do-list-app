@@ -13,6 +13,10 @@ interface TaskDao {
     @Query("SELECT * FROM task_category_table")
     fun getCategoriesWithTasks(): Flow<List<CategoryWithTasks>>
 
+    @Transaction
+    @Query("SELECT * FROM task_category_table")
+    fun getAllTaskCategory(): Flow<List<TaskCategory>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCategory(category: TaskCategory): Long
 

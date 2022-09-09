@@ -22,8 +22,10 @@ class PreferencesManager @Inject constructor(
             emit(emptyPreferences())
         }.map { preferences ->
             val selectedTaskCategoryIndex =
-                preferences[PreferencesKeys.SELECTED_TASK_CATEGORY_INDEX] ?: 0
-            selectedTaskCategoryIndex
+                preferences[PreferencesKeys.SELECTED_TASK_CATEGORY_INDEX] ?: 1
+            UserPreferences(
+                selectedTaskCategoryIndex = selectedTaskCategoryIndex
+            )
         }
 
     suspend fun updateSelectedTaskCategoryIndex(index: Int) {
@@ -35,5 +37,9 @@ class PreferencesManager @Inject constructor(
     private object PreferencesKeys {
         val SELECTED_TASK_CATEGORY_INDEX = intPreferencesKey("selected_task_category_index")
     }
+
+    data class UserPreferences(
+        val selectedTaskCategoryIndex: Int = -1
+    )
 
 }

@@ -29,8 +29,6 @@ import com.aristhewonder.todolistapp.ui.component.TaskList
 import com.aristhewonder.todolistapp.ui.ui.theme.ToDoListAppTheme
 import com.aristhewonder.todolistapp.util.Keys
 import com.aristhewonder.todolistapp.util.extension.isNotNull
-import com.aristhewonder.todolistapp.util.extension.isNull
-import com.aristhewonder.todolistapp.util.extension.second
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.DateFormat
 
@@ -61,6 +59,7 @@ class TasksFragment : Fragment() {
                                         }
                                         TaskCategoryOptionsDropdownMenu(
                                             showMenu = showMenu,
+                                            actionAllowed = !viewModel.reservedCategory.value,
                                             onDismissRequest = { showMenu = false },
                                             onRenameItemClicked = { navigateToEditTaskCategoryFragment() },
                                             onRemoveItemClicked = {
@@ -95,7 +94,7 @@ class TasksFragment : Fragment() {
                                     Button(
                                         onClick = {
                                             viewModel.selectedCategory.value?.let {
-                                                viewModel.insertTask(
+                                                viewModel.onInsertTask(
                                                     DateFormat.getDateTimeInstance()
                                                         .format(System.currentTimeMillis()),
                                                     it.categoryId
@@ -117,7 +116,7 @@ class TasksFragment : Fragment() {
 
     @Composable
     fun Categories(modifier: Modifier) {
-        val categories = viewModel.categories.collectAsState(initial = emptyList()).value
+        val categories = viewModel.categories.value
         with(categories) {
             if (isNotEmpty()) {
                 TaskCategoryList(
@@ -135,7 +134,7 @@ class TasksFragment : Fragment() {
 
     @Composable
     fun Tasks(modifier: Modifier) {
-        val tasks = viewModel.tasks.collectAsState(initial = emptyList()).value
+        val tasks = viewModel.tasks.value
         with(tasks) {
             if (isEmpty()) {
                 EmptyState(message = "No tasks yet.", modifier = modifier)
@@ -145,10 +144,10 @@ class TasksFragment : Fragment() {
                 tasks,
                 modifier,
                 onTaskCompletedClicked = { task ->
-                    viewModel.updateTask(task.copy(completed = true))
+                    viewModel.onTaskCompleted(task)
                 },
                 onTaskStaredClicked = { task, stared ->
-                    viewModel.updateTask(task.copy(stared = stared))
+                    viewModel.onTaskStaredChanged(task, stared)
                 }
             )
         }
