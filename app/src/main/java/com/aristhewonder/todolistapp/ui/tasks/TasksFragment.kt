@@ -5,38 +5,37 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Scaffold
+import androidx.compose.material.Surface
+import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.os.bundleOf
+import androidx.compose.ui.unit.sp
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.aristhewonder.todolistapp.R
-import com.aristhewonder.todolistapp.ui.component.EmptyState
-import com.aristhewonder.todolistapp.ui.component.TaskCategoryList
-import com.aristhewonder.todolistapp.ui.component.TaskCategoryOptionsDropdownMenu
-import com.aristhewonder.todolistapp.ui.component.TaskList
+import com.aristhewonder.todolistapp.ui.component.tablayout.TabItemModel
+import com.aristhewonder.todolistapp.ui.component.tablayout.TabLayout
 import com.aristhewonder.todolistapp.ui.ui.theme.ToDoListAppTheme
-import com.aristhewonder.todolistapp.util.Keys
-import com.aristhewonder.todolistapp.util.extension.isNotNull
+import com.google.accompanist.pager.ExperimentalPagerApi
 import dagger.hilt.android.AndroidEntryPoint
-import java.text.DateFormat
 
 @AndroidEntryPoint
 class TasksFragment : Fragment() {
 
     private val viewModel by viewModels<TasksViewModel>()
 
+    @OptIn(ExperimentalPagerApi::class)
     @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -51,61 +50,38 @@ class TasksFragment : Fragment() {
                         var showMenu by remember { mutableStateOf(false) }
                         Scaffold(
                             topBar = {
-                                TopAppBar(
-                                    title = { Text(text = "Tasks") },
-                                    actions = {
-                                        IconButton(onClick = { showMenu = !showMenu }) {
-                                            Icon(Icons.Default.MoreVert, "")
-                                        }
-                                        TaskCategoryOptionsDropdownMenu(
-                                            showMenu = showMenu,
-                                            actionAllowed = !viewModel.reservedCategory.value,
-                                            onDismissRequest = { showMenu = false },
-                                            onRenameItemClicked = { navigateToEditTaskCategoryFragment() },
-                                            onRemoveItemClicked = {
-                                                showMenu = false
-                                                viewModel.onDeleteSelectedTaskCategory()
-                                            },
-                                            onNewListClicked = { navigateToAddTaskCategoryFragment() })
-                                    }
-
-                                )
-                            }
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-
-                                Categories(
-                                    modifier = Modifier.align(Alignment.TopCenter)
-                                )
-
-                                //Make sure a category is selected.
-                                if (viewModel.selectedCategory.value.isNotNull()) {
-                                    Tasks(
-                                        modifier = Modifier
-                                            .align(Alignment.Center)
-                                            .fillMaxSize()
-                                            .padding(top = 50.dp)
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = "Tasks",
+                                        style = TextStyle(color = Color.Black),
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 20.sp,
+                                        modifier = Modifier.padding(all = 5.dp),
+                                        textAlign = TextAlign.Center
                                     )
                                 }
-
-                                Column(modifier = Modifier.align(Alignment.BottomCenter)) {
-                                    Button(
-                                        onClick = {
-                                            viewModel.selectedCategory.value?.let {
-                                                viewModel.onInsertTask(
-                                                    DateFormat.getDateTimeInstance()
-                                                        .format(System.currentTimeMillis()),
-                                                    it.categoryId
-                                                )
-                                            }
-                                        }) {
-                                        Text(text = "Create new task")
-                                    }
+                            }
+                        ) {
+                            viewModel.taskCategories.value.let {
+                                if (it.isNotEmpty()) {
+                                    TabLayout(
+                                        items = it.map { taskCategory -> TabItemModel(text = taskCategory.name) },
+                                        defaultSelectedItemIndex = viewModel.selectedIndex.value,
+                                        onTabSelected = { index ->
+                                            viewModel.onTaskCategorySelected(it[index], index)
+                                        },
+                                        tabContent = { pageIndex ->
+                                            TabContentScreen(pageIndex.toString())
+                                        }
+                                    )
                                 }
                             }
-
                         }
 
                     }
@@ -114,54 +90,26 @@ class TasksFragment : Fragment() {
         }
     }
 
-    @Composable
-    fun Categories(modifier: Modifier) {
-        val categories = viewModel.categories.value
-        with(categories) {
-            if (isNotEmpty()) {
-                TaskCategoryList(
-                    categories = this,
-                    modifier = modifier,
-                    onItemClick = {
-                        viewModel.onCategorySelected(category = it)
-                    },
-                    onNewListClicked = { navigateToAddTaskCategoryFragment() }
-                )
-            }
-        }
-    }
-
-
-    @Composable
-    fun Tasks(modifier: Modifier) {
-        val tasks = viewModel.tasks.value
-        with(tasks) {
-            if (isEmpty()) {
-                EmptyState(message = "No tasks yet.", modifier = modifier)
-                return
-            }
-            TaskList(
-                tasks,
-                modifier,
-                onTaskCompletedClicked = { task ->
-                    viewModel.onTaskCompleted(task)
-                },
-                onTaskStaredClicked = { task, stared ->
-                    viewModel.onTaskStaredChanged(task, stared)
-                }
-            )
-        }
-    }
 
     private fun navigateToAddTaskCategoryFragment() {
         findNavController().navigate(R.id.action_tasksFragment_to_addTaskCategoryFragment)
     }
 
-    private fun navigateToEditTaskCategoryFragment() {
-        viewModel.selectedCategory.value.let { taskCategory ->
-            val destination = R.id.action_tasksFragment_to_editTaskCategoryFragment
-            val bundle = bundleOf(Keys.TASK_CATEGORY to taskCategory)
-            findNavController().navigate(destination, bundle)
+
+    @Composable
+    fun TabContentScreen(data: String) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = data,
+                style = MaterialTheme.typography.h5,
+                color = Color.Blue,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
         }
     }
 

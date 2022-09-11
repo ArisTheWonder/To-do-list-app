@@ -1,6 +1,7 @@
 package com.aristhewonder.todolistapp.util
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -16,20 +17,19 @@ class PreferencesManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
 
-    private val dataStore = context.dataStore
-    val preferencesFlow = dataStore.data
+    val preferencesFlow = context.dataStore.data
         .catch {
             emit(emptyPreferences())
         }.map { preferences ->
             val selectedTaskCategoryIndex =
-                preferences[PreferencesKeys.SELECTED_TASK_CATEGORY_INDEX] ?: 1
+                preferences[PreferencesKeys.SELECTED_TASK_CATEGORY_INDEX]
             UserPreferences(
                 selectedTaskCategoryIndex = selectedTaskCategoryIndex
             )
         }
 
     suspend fun updateSelectedTaskCategoryIndex(index: Int) {
-        dataStore.edit { preferences ->
+        context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.SELECTED_TASK_CATEGORY_INDEX] = index
         }
     }
@@ -39,7 +39,7 @@ class PreferencesManager @Inject constructor(
     }
 
     data class UserPreferences(
-        val selectedTaskCategoryIndex: Int = -1
+        val selectedTaskCategoryIndex: Int? = null
     )
 
 }
