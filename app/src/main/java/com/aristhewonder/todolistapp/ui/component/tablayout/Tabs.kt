@@ -1,5 +1,7 @@
 package com.aristhewonder.todolistapp.ui.component.tablayout
 
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,6 +21,7 @@ fun Tabs(
     pagerState: PagerState,
     items: List<TabItemModel>,
     defaultSelectedItemIndex: Int,
+    tabFooter: TabFooter? = null,
     onTabSelected: (index: Int) -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -26,7 +29,7 @@ fun Tabs(
         pagerState.animateScrollToPage(defaultSelectedItemIndex)
     }
     ScrollableTabRow(
-        edgePadding = 0.dp,
+        edgePadding = 8.dp,
         selectedTabIndex = pagerState.currentPage,
         backgroundColor = Color.White,
         indicator = { tabPositions ->
@@ -38,25 +41,49 @@ fun Tabs(
         }
     ) {
         items.forEachIndexed { index, item ->
-            Tab(
-                text = {
-                    item.text?.let { text ->
-                        Text(text, color = Color.Black)
-                    }
-                },
-                icon = {
-                    item.icon?.let { icon ->
-                        Icon(painterResource(id = icon), contentDescription = "")
-                    }
-                },
-                selected = pagerState.currentPage == index,
-                onClick = {
-                    scope.launch {
-                        pagerState.animateScrollToPage(index)
-                        onTabSelected.invoke(index)
-                    }
+            TabItem(
+                text = item.text,
+                icon = item.icon,
+                selected = pagerState.currentPage == index
+            ) {
+                scope.launch {
+                    onTabSelected.invoke(index)
+                    pagerState.animateScrollToPage(index)
                 }
-            )
+            }
+        }
+        tabFooter?.let { footer ->
+            TabItem(text = footer.text, icon = footer.icon, selected = false) {
+                footer.onClick.invoke()
+            }
         }
     }
+}
+
+@Composable
+private fun TabItem(
+    text: String?,
+    icon: Int?,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    LeadingIconTab(
+        modifier = Modifier.height(56.dp),
+        text = {
+            text?.let {
+                Text(text = it, color = Color.Black)
+            }
+        },
+        icon = {
+            icon?.let { icon ->
+                Icon(
+                    painterResource(id = icon),
+                    contentDescription = "",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        },
+        selected = selected,
+        onClick = onClick
+    )
 }

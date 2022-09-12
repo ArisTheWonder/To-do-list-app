@@ -6,14 +6,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -24,6 +23,9 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.aristhewonder.todolistapp.R
+import com.aristhewonder.todolistapp.ui.component.EmptyState
+import com.aristhewonder.todolistapp.ui.component.TaskList
+import com.aristhewonder.todolistapp.ui.component.tablayout.TabFooter
 import com.aristhewonder.todolistapp.ui.component.tablayout.TabItemModel
 import com.aristhewonder.todolistapp.ui.component.tablayout.TabLayout
 import com.aristhewonder.todolistapp.ui.ui.theme.ToDoListAppTheme
@@ -49,35 +51,56 @@ class TasksFragment : Fragment() {
                     Surface(modifier = Modifier.fillMaxSize()) {
                         var showMenu by remember { mutableStateOf(false) }
                         Scaffold(
-                            topBar = {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(56.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    Text(
-                                        text = "Tasks",
-                                        style = TextStyle(color = Color.Black),
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 20.sp,
-                                        modifier = Modifier.padding(all = 5.dp),
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                            }
+                            topBar = { AppBar() }
                         ) {
                             viewModel.taskCategories.value.let {
                                 if (it.isNotEmpty()) {
+                                    val items = it.subList(1, it.size).map { taskCategory ->
+                                        TabItemModel(text = taskCategory.name)
+                                    }.toMutableList()
+                                    items.add(0, TabItemModel(icon = R.drawable.star_filled))
+
                                     TabLayout(
-                                        items = it.map { taskCategory -> TabItemModel(text = taskCategory.name) },
+                                        items = items,
+                                        tabFooter = TabFooter(
+                                            text = "New list",
+                                            icon = R.drawable.plus
+                                        ) {
+                                          navigateToAddTaskCategoryFragment()
+                                        },
                                         defaultSelectedItemIndex = viewModel.selectedIndex.value,
                                         onTabSelected = { index ->
                                             viewModel.onTaskCategorySelected(it[index], index)
                                         },
                                         tabContent = { pageIndex ->
-                                            TabContentScreen(pageIndex.toString())
+                                            Box(modifier = Modifier.fillMaxSize()) {
+                                                when {
+                                                    viewModel.loading.value -> {
+                                                        CircularProgressIndicator(
+                                                            strokeWidth = 2.dp,
+                                                            modifier = Modifier
+                                                                .align(Alignment.TopCenter)
+                                                                .padding(8.dp)
+                                                                .size(28.dp)
+                                                        )
+                                                    }
+                                                    viewModel.tasks.value.isEmpty() -> {
+                                                        EmptyState(
+                                                            message = "Not tasks yet.",
+                                                            modifier = Modifier
+                                                                .align(Alignment.Center)
+                                                        )
+                                                    }
+                                                    viewModel.tasks.value.isNotEmpty() -> {
+                                                        TaskList(
+                                                            tasks = viewModel.tasks.value,
+                                                            modifier = Modifier.align(Alignment.Center),
+                                                            onTaskCompletedClicked = {},
+                                                            onTaskStaredClicked = { task, stared -> }
+                                                        )
+                                                    }
+                                                }
+                                            }
                                         }
                                     )
                                 }
@@ -95,19 +118,18 @@ class TasksFragment : Fragment() {
         findNavController().navigate(R.id.action_tasksFragment_to_addTaskCategoryFragment)
     }
 
-
     @Composable
-    fun TabContentScreen(data: String) {
+    fun AppBar() {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = data,
-                style = MaterialTheme.typography.h5,
-                color = Color.Blue,
-                fontWeight = FontWeight.Bold,
+                text = "Tasks",
+                style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Medium),
                 textAlign = TextAlign.Center
             )
         }

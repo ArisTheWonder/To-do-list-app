@@ -2,6 +2,7 @@ package com.aristhewonder.todolistapp.ui.component.tablayout
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,6 +18,7 @@ fun TabLayout(
     items: List<TabItemModel>,
     defaultSelectedItemIndex: Int = 0,
     onTabSelected: (index: Int) -> Unit,
+    tabFooter: TabFooter? = null,
     tabContent: @Composable (pageIndex: Int) -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = items.size)
@@ -27,9 +29,10 @@ fun TabLayout(
             pagerState = pagerState,
             defaultSelectedItemIndex = defaultSelectedItemIndex,
             items = items,
-            onTabSelected = onTabSelected
+            onTabSelected = onTabSelected,
+            tabFooter = tabFooter
         )
-        HorizontalPager(state = pagerState) { page ->
+        HorizontalPager(state = pagerState, dragEnabled = false) { page ->
             tabContent.invoke(page)
         }
     }
