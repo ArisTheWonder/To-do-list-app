@@ -18,13 +18,23 @@ fun TaskCategoryOptionsDropdownMenu(
         expanded = showMenu,
         onDismissRequest = onDismissRequest,
     ) {
-        DropdownMenuItem(onClick = onRenameItemClicked, enabled = actionAllowed) {
+        DropdownMenuItem(onClick = {
+            onRenameItemClicked.invoke()
+            onDismissRequest.invoke()
+
+        }, enabled = actionAllowed) {
             Text(text = "Rename list")
         }
-        DropdownMenuItem(onClick = onRemoveItemClicked, enabled = actionAllowed) {
+        DropdownMenuItem(onClick = {
+            onRemoveItemClicked.invoke()
+            onDismissRequest.invoke()
+        }, enabled = actionAllowed) {
             Text(text = "Remove list")
         }
-        DropdownMenuItem(onClick = onNewListClicked) {
+        DropdownMenuItem(onClick = {
+            onNewListClicked.invoke()
+            onDismissRequest.invoke()
+        }) {
             Text(text = "New list")
         }
     }

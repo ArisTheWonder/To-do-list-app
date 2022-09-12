@@ -5,30 +5,36 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.aristhewonder.todolistapp.R
+import com.aristhewonder.todolistapp.data.entity.TaskCategory
 import com.aristhewonder.todolistapp.ui.component.EmptyState
+import com.aristhewonder.todolistapp.ui.component.TaskCategoryOptionsDropdownMenu
 import com.aristhewonder.todolistapp.ui.component.TaskList
 import com.aristhewonder.todolistapp.ui.component.tablayout.TabFooter
 import com.aristhewonder.todolistapp.ui.component.tablayout.TabItemModel
 import com.aristhewonder.todolistapp.ui.component.tablayout.TabLayout
+import com.aristhewonder.todolistapp.ui.tasks.TasksViewModel.TasksState.*
 import com.aristhewonder.todolistapp.ui.ui.theme.ToDoListAppTheme
+import com.aristhewonder.todolistapp.util.Keys
 import com.google.accompanist.pager.ExperimentalPagerApi
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -49,9 +55,25 @@ class TasksFragment : Fragment() {
             setContent {
                 ToDoListAppTheme {
                     Surface(modifier = Modifier.fillMaxSize()) {
-                        var showMenu by remember { mutableStateOf(false) }
                         Scaffold(
-                            topBar = { AppBar() }
+                            topBar = { AppBar() },
+                            floatingActionButtonPosition = FabPosition.Center,
+                            floatingActionButton = {
+                                ExtendedFloatingActionButton(onClick = {
+                                    Toast.makeText(
+                                        requireContext(),
+                                        "Add task",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                    icon = {
+                                        Icon(
+                                            imageVector = Icons.Filled.Add,
+                                            contentDescription = "AddTask"
+                                        )
+                                    },
+                                    text = { Text(text = "Add new task") })
+                            },
                         ) {
                             viewModel.taskCategories.value.let {
                                 if (it.isNotEmpty()) {
@@ -59,23 +81,22 @@ class TasksFragment : Fragment() {
                                         TabItemModel(text = taskCategory.name)
                                     }.toMutableList()
                                     items.add(0, TabItemModel(icon = R.drawable.star_filled))
-
                                     TabLayout(
                                         items = items,
                                         tabFooter = TabFooter(
                                             text = "New list",
                                             icon = R.drawable.plus
                                         ) {
-                                          navigateToAddTaskCategoryFragment()
+                                            navigateToAddTaskCategoryFragment()
                                         },
                                         defaultSelectedItemIndex = viewModel.selectedIndex.value,
                                         onTabSelected = { index ->
                                             viewModel.onTaskCategorySelected(it[index], index)
                                         },
-                                        tabContent = { pageIndex ->
+                                        tabContent = {
                                             Box(modifier = Modifier.fillMaxSize()) {
-                                                when {
-                                                    viewModel.loading.value -> {
+                                                when (val state = viewModel.tasksState.value) {
+                                                    is Loading -> {
                                                         CircularProgressIndicator(
                                                             strokeWidth = 2.dp,
                                                             modifier = Modifier
@@ -84,21 +105,32 @@ class TasksFragment : Fragment() {
                                                                 .size(28.dp)
                                                         )
                                                     }
-                                                    viewModel.tasks.value.isEmpty() -> {
+                                                    is Empty -> {
                                                         EmptyState(
-                                                            message = "Not tasks yet.",
+                                                            message = if (state.staredTasks)
+                                                                "Not stared tasks.\nYou can mark your important tasks for easy access."
+                                                            else
+                                                                "Not tasks yet.",
                                                             modifier = Modifier
                                                                 .align(Alignment.Center)
                                                         )
                                                     }
-                                                    viewModel.tasks.value.isNotEmpty() -> {
+                                                    is NotEmpty -> {
                                                         TaskList(
-                                                            tasks = viewModel.tasks.value,
+                                                            tasks = state.tasks,
                                                             modifier = Modifier.align(Alignment.Center),
-                                                            onTaskCompletedClicked = {},
-                                                            onTaskStaredClicked = { task, stared -> }
+                                                            onTaskCompletedClicked = { task ->
+                                                                viewModel.onTaskCompleted(task)
+                                                            },
+                                                            onTaskStaredClicked = { task, stared ->
+                                                                viewModel.onTaskStarStatusChanged(
+                                                                    task,
+                                                                    stared
+                                                                )
+                                                            }
                                                         )
                                                     }
+                                                    else -> {}
                                                 }
                                             }
                                         }
@@ -118,20 +150,53 @@ class TasksFragment : Fragment() {
         findNavController().navigate(R.id.action_tasksFragment_to_addTaskCategoryFragment)
     }
 
+    private fun navigateToEditTaskCategoryFragment(taskCategory: TaskCategory) {
+        val destination = R.id.action_tasksFragment_to_editTaskCategoryFragment
+        val bundle = bundleOf(Keys.TASK_CATEGORY to taskCategory)
+        findNavController().navigate(destination, bundle)
+    }
+
     @Composable
     fun AppBar() {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+        TopAppBar(
+            elevation = 0.dp,
+            backgroundColor = Color.Transparent
         ) {
-            Text(
-                text = "Tasks",
-                style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Medium),
-                textAlign = TextAlign.Center
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                Text(
+                    modifier = Modifier.align(Alignment.Center),
+                    text = "Tasks",
+                    style = TextStyle(fontSize = 24.sp),
+                    textAlign = TextAlign.Center
+                )
+                var showMenu by remember { mutableStateOf(false) }
+                IconButton(onClick = {
+                    showMenu = true
+                }, modifier = Modifier.align(Alignment.CenterEnd)) {
+                    Icon(imageVector = Icons.Filled.MoreVert, contentDescription = "More options")
+                }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(top = 56.dp, end = 8.dp)
+                ) {
+                    TaskCategoryOptionsDropdownMenu(
+                        showMenu = showMenu,
+                        actionAllowed = !viewModel.reserved.value,
+                        onDismissRequest = { showMenu = false },
+                        onRenameItemClicked = {
+                            viewModel.selectedTaskCategory.value?.let {
+                                navigateToEditTaskCategoryFragment(taskCategory = it)
+                            }
+                        },
+                        onRemoveItemClicked = { viewModel.onDeleteTaskCategory() },
+                        onNewListClicked = { navigateToAddTaskCategoryFragment() })
+                }
+            }
         }
     }
 

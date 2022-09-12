@@ -9,9 +9,7 @@ import com.aristhewonder.todolistapp.data.entity.Task
 import com.aristhewonder.todolistapp.data.entity.TaskCategory
 import com.aristhewonder.todolistapp.data.repository.TaskRepository
 import com.aristhewonder.todolistapp.util.PreferencesManager
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -21,23 +19,20 @@ class TasksViewModel @ViewModelInject constructor(
     private val preferencesManager: PreferencesManager
 ) : ViewModel() {
 
-    companion object {
-        const val TAG = "TaskViewModel"
-    }
-
     private val _taskCategories = mutableStateOf<List<TaskCategory>>(emptyList())
     val taskCategories: State<List<TaskCategory>> = _taskCategories
 
     private val _selectedTaskCategory = mutableStateOf<TaskCategory?>(null)
+    val selectedTaskCategory: State<TaskCategory?> = _selectedTaskCategory
 
-    private val _loading = mutableStateOf(false)
-    val loading: State<Boolean> = _loading
+    private val _reserved = mutableStateOf(false)
+    val reserved: State<Boolean> = _reserved
+
+    private val _tasksState = mutableStateOf<TasksState>(TasksState.Idle)
+    val tasksState: State<TasksState> = _tasksState
 
     private val _selectedIndex = mutableStateOf(1)
     val selectedIndex: State<Int> = _selectedIndex
-
-    private val _tasks = mutableStateOf<List<Task>>(emptyList())
-    val tasks: State<List<Task>> = _tasks
 
     init {
 
@@ -46,16 +41,33 @@ class TasksViewModel @ViewModelInject constructor(
                 repository.getAllTaskCategory(),
                 preferencesManager.preferencesFlow,
                 repository.getAllTasks()
-            ) { categories, userPreferences, tasks->
+            ) { categories, userPreferences, tasks ->
                 _taskCategories.value = categories
                 userPreferences.selectedTaskCategoryIndex?.let { index ->
-                    val category = categories[index]
-                    selectTaskCategory(category)
-                    _selectedIndex.value = index
-                    _tasks.value = tasks.filter{
-                        it.categoryId == category.categoryId
+                    if (index < categories.size) {
+                        val category = categories[index]
+                        selectTaskCategory(category)
+                        _selectedIndex.value = index
+                        val staredCategory = category.categoryId == 1L
+                        val filteredTasks = if (staredCategory) {
+                            tasks.filter {
+                                it.stared
+                            }.filter {
+                                !it.completed
+                            }
+                        } else {
+                            tasks.filter {
+                                it.categoryId == category.categoryId
+                            }.filter {
+                                !it.completed
+                            }
+                        }
+                        _tasksState.value = if (filteredTasks.isEmpty()) {
+                            TasksState.Empty(staredTasks = staredCategory)
+                        } else {
+                            TasksState.NotEmpty(tasks = filteredTasks, staredTasks = staredCategory)
+                        }
                     }
-                    _loading.value = false
                 }
             }.collect()
         }
@@ -63,15 +75,57 @@ class TasksViewModel @ViewModelInject constructor(
 
     fun onTaskCategorySelected(taskCategory: TaskCategory, selectedIndex: Int) {
         selectTaskCategory(taskCategory)
-        _loading.value = true
+        _tasksState.value = TasksState.Loading
         viewModelScope.launch {
-            preferencesManager.updateSelectedTaskCategoryIndex(selectedIndex)
+            updateSelectedTaskCategoryIndex(selectedIndex)
         }
+    }
+
+    private fun updateSelectedTaskCategoryIndex(index: Int) {
+        viewModelScope.launch {
+            preferencesManager.updateSelectedTaskCategoryIndex(index)
+        }
+    }
+
+    fun onDeleteTaskCategory() {
+        _selectedTaskCategory.value?.let {
+            val index = _selectedIndex.value - 1
+            updateSelectedTaskCategoryIndex(index)
+            _selectedIndex.value = index
+            deleteTaskCategory(taskCategory = it)
+        }
+    }
+
+    fun onTaskStarStatusChanged(task: Task, stared: Boolean) {
+        updateTask(task.copy(stared = stared))
+    }
+
+    fun onTaskCompleted(task: Task) {
+        updateTask(task.copy(completed = true))
     }
 
     private fun selectTaskCategory(taskCategory: TaskCategory) {
         _selectedTaskCategory.value = taskCategory
+        _reserved.value = taskCategory.reserved
     }
 
+    private fun deleteTaskCategory(taskCategory: TaskCategory) {
+        viewModelScope.launch {
+            repository.deleteCategory(taskCategory)
+        }
+    }
+
+    private fun updateTask(task: Task) {
+        viewModelScope.launch {
+            repository.updateTask(task)
+        }
+    }
+
+    sealed class TasksState {
+        object Idle : TasksState()
+        object Loading : TasksState()
+        data class Empty(val staredTasks: Boolean) : TasksState()
+        data class NotEmpty(val tasks: List<Task>, val staredTasks: Boolean) : TasksState()
+    }
 
 }
