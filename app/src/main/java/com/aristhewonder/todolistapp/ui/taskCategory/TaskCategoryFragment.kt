@@ -11,13 +11,14 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color.Companion.Transparent
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
@@ -35,11 +36,14 @@ abstract class TaskCategoryFragment : Fragment() {
     abstract fun getTitleText(): String
     abstract fun getHitText(): String
     abstract fun getTextInputDefaultValue(): String
-    abstract fun getActionText(): String
     abstract fun onSuccess()
     abstract fun onFailure()
     abstract fun preformAction(taskCategoryName: String)
 
+    @OptIn(ExperimentalComposeUiApi::class)
+    private var keyboardController: SoftwareKeyboardController? = null
+
+    @OptIn(ExperimentalComposeUiApi::class)
     @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -51,6 +55,8 @@ abstract class TaskCategoryFragment : Fragment() {
             setContent {
                 ToDoListAppTheme {
                     Surface {
+                        keyboardController = LocalSoftwareKeyboardController.current
+                        viewModel.onCategoryNameChanged(getTextInputDefaultValue())
                         Scaffold(
                             topBar = topBar(),
                             modifier = Modifier.fillMaxSize()
@@ -63,15 +69,29 @@ abstract class TaskCategoryFragment : Fragment() {
         }
     }
 
+    @OptIn(ExperimentalComposeUiApi::class)
     private fun topBar(): @Composable () -> Unit = {
+        val state = viewModel.state
+        val name = viewModel.enteredCategoryName.value
         TopAppBar(
             title = { Text(text = getTitleText()) },
+            backgroundColor = Transparent,
+            elevation = 0.dp,
             navigationIcon = {
                 IconButton(onClick = { backToTasks() }) {
                     Icon(
-                        imageVector = Icons.Filled.ArrowBack,
+                        imageVector = Icons.Filled.Close,
                         contentDescription = "Back"
                     )
+                }
+            },
+            actions = {
+                ActionButton(
+                    state = state,
+                    enabled = state is IdleState && name.isNotEmpty()
+                ) {
+                    keyboardController?.hide()
+                    preformAction(taskCategoryName = viewModel.enteredCategoryName.value)
                 }
             }
         )
@@ -80,34 +100,45 @@ abstract class TaskCategoryFragment : Fragment() {
     @OptIn(ExperimentalComposeUiApi::class)
     @Composable
     private fun RenderContent() {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Text(
-                text = getHitText(),
-                modifier = Modifier.padding(8.dp)
-            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Divider()
+                var name by remember { mutableStateOf(getTextInputDefaultValue()) }
+                OutlinedTextField(
+                    singleLine = true,
+                    maxLines = 1,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            keyboardController?.hide()
+                            preformAction(taskCategoryName = viewModel.enteredCategoryName.value)
+                        }
+                    ),
+                    value = name,
+                    onValueChange = {
+                        name = it
+                        viewModel.onCategoryNameChanged(it)
+                    },
+                    colors = TextFieldDefaults.textFieldColors(
+                        backgroundColor = Transparent,
+                        focusedIndicatorColor = Transparent,
+                        unfocusedIndicatorColor = Transparent,
+                        disabledIndicatorColor = Transparent
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text(
+                            text = getHitText(),
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                )
+                Divider()
+            }
 
-            val keyboardController = LocalSoftwareKeyboardController.current
-            var name by remember { mutableStateOf(getTextInputDefaultValue()) }
-            TextField(
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(
-                    onDone = { keyboardController?.hide() }),
-                value = name,
-                onValueChange = {
-                    name = it
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-                    .height(56.dp)
-            )
-
-            val state = viewModel.state
-            when (state) {
+            when (viewModel.state) {
                 SuccessState -> {
                     onSuccess()
                     backToTasks()
@@ -116,15 +147,6 @@ abstract class TaskCategoryFragment : Fragment() {
                     onFailure()
                 }
                 else -> {}
-            }
-
-            ActionButton(
-                state = state,
-                enabled = state is IdleState && name.isNotEmpty(),
-                text = getActionText()
-            ) {
-                keyboardController?.hide()
-                preformAction(taskCategoryName = name)
             }
 
         }
@@ -142,17 +164,16 @@ abstract class TaskCategoryFragment : Fragment() {
     private fun ActionButton(
         state: TaskCategoryViewModel.TaskCategoryState,
         enabled: Boolean,
-        text: String,
         onClick: () -> Unit,
     ) {
-        Button(
+        TextButton(
             enabled = enabled,
             onClick = onClick
         ) {
             if (state is LoadingState) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
             } else {
-                Text(text = text)
+                Text(text = "Done")
             }
         }
     }

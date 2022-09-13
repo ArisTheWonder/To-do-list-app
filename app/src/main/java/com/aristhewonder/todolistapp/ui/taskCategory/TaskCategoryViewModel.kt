@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.aristhewonder.todolistapp.data.entity.TaskCategory
 import com.aristhewonder.todolistapp.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -18,6 +17,12 @@ class TaskCategoryViewModel @ViewModelInject constructor(
     private val _state = mutableStateOf<TaskCategoryState>(TaskCategoryState.IdleState)
     val state: TaskCategoryState
         get() = _state.value
+
+    val enteredCategoryName = mutableStateOf("")
+
+    fun onCategoryNameChanged(name: String) {
+        enteredCategoryName.value = name
+    }
 
     fun onInsert(categoryName: String) {
         viewModelScope.launch {
