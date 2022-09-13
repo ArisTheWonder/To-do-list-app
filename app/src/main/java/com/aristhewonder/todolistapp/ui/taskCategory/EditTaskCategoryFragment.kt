@@ -15,7 +15,7 @@ class EditTaskCategoryFragment: TaskCategoryFragment() {
 
     override fun getTitleText(): String  = "Rename list"
 
-    override fun getHitText(): String = "Enter a new title for your list"
+    override fun getHintText(): String = "Enter a new title for your list"
 
     override fun getTextInputDefaultValue(): String = taskCategory.name
 

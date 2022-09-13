@@ -30,15 +30,8 @@ fun TaskItem(
             Text(text = task.name)
         }
 
-        IconButton(onClick = {
+        StarCheckBox(checked = task.stared) {
             onTaskStaredClicked.invoke(task, !task.stared)
-        }) {
-            val drawable = if (task.stared) {
-                com.aristhewonder.todolistapp.R.drawable.star_filled
-            } else {
-                com.aristhewonder.todolistapp.R.drawable.star_outlined
-            }
-            Icon(painter = painterResource(id = drawable), contentDescription = "", modifier = Modifier.size(24.dp))
         }
     }
 }

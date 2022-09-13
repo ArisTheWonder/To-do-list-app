@@ -7,23 +7,22 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color.Companion.Transparent
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
+import com.aristhewonder.todolistapp.ui.component.CustomTextField
 import com.aristhewonder.todolistapp.ui.taskCategory.TaskCategoryViewModel.TaskCategoryState.*
 import com.aristhewonder.todolistapp.ui.ui.theme.ToDoListAppTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -34,7 +33,7 @@ abstract class TaskCategoryFragment : Fragment() {
     protected val viewModel by viewModels<TaskCategoryViewModel>()
 
     abstract fun getTitleText(): String
-    abstract fun getHitText(): String
+    abstract fun getHintText(): String
     abstract fun getTextInputDefaultValue(): String
     abstract fun onSuccess()
     abstract fun onFailure()
@@ -106,34 +105,18 @@ abstract class TaskCategoryFragment : Fragment() {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Divider()
                 var name by remember { mutableStateOf(getTextInputDefaultValue()) }
-                OutlinedTextField(
-                    singleLine = true,
-                    maxLines = 1,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            keyboardController?.hide()
-                            preformAction(taskCategoryName = viewModel.enteredCategoryName.value)
-                        }
-                    ),
-                    value = name,
+                CustomTextField(
+                    onDone = {
+                        keyboardController?.hide()
+                        preformAction(taskCategoryName = viewModel.enteredCategoryName.value)
+                    },
+                    text = name,
                     onValueChange = {
                         name = it
                         viewModel.onCategoryNameChanged(it)
                     },
-                    colors = TextFieldDefaults.textFieldColors(
-                        backgroundColor = Transparent,
-                        focusedIndicatorColor = Transparent,
-                        unfocusedIndicatorColor = Transparent,
-                        disabledIndicatorColor = Transparent
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    label = {
-                        Text(
-                            text = getHitText(),
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    }
+                    hintText = getHintText(),
+                    focusRequester = FocusRequester()
                 )
                 Divider()
             }

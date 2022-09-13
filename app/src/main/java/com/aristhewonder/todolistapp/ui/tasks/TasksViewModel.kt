@@ -12,6 +12,7 @@ import com.aristhewonder.todolistapp.util.PreferencesManager
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 
 class TasksViewModel @ViewModelInject constructor(
@@ -54,13 +55,13 @@ class TasksViewModel @ViewModelInject constructor(
                                 it.stared
                             }.filter {
                                 !it.completed
-                            }
+                            }.sortedByDescending { it.creationDate }
                         } else {
                             tasks.filter {
                                 it.categoryId == category.categoryId
                             }.filter {
                                 !it.completed
-                            }
+                            }.sortedByDescending { it.creationDate }
                         }
                         _tasksState.value = if (filteredTasks.isEmpty()) {
                             TasksState.Empty(staredTasks = staredCategory)
@@ -74,6 +75,9 @@ class TasksViewModel @ViewModelInject constructor(
     }
 
     fun onTaskCategorySelected(taskCategory: TaskCategory, selectedIndex: Int) {
+        if (selectedIndex == _selectedIndex.value) {
+            return
+        }
         selectTaskCategory(taskCategory)
         _tasksState.value = TasksState.Loading
         viewModelScope.launch {
@@ -100,6 +104,16 @@ class TasksViewModel @ViewModelInject constructor(
         updateTask(task.copy(stared = stared))
     }
 
+    fun onInsertTask(taskName: String, categoryId: Long, stared: Boolean) {
+        _tasksState.value = TasksState.InsertingNewTask
+        viewModelScope.launch {
+            insertTask(
+                task = Task(name = taskName, categoryId = categoryId, stared = stared)
+            )
+        }
+        _tasksState.value = TasksState.Idle
+    }
+
     fun onTaskCompleted(task: Task) {
         updateTask(task.copy(completed = true))
     }
@@ -121,9 +135,14 @@ class TasksViewModel @ViewModelInject constructor(
         }
     }
 
+    private suspend fun insertTask(task: Task) {
+        repository.insertTask(task)
+    }
+
     sealed class TasksState {
         object Idle : TasksState()
         object Loading : TasksState()
+        object InsertingNewTask : TasksState()
         data class Empty(val staredTasks: Boolean) : TasksState()
         data class NotEmpty(val tasks: List<Task>, val staredTasks: Boolean) : TasksState()
     }

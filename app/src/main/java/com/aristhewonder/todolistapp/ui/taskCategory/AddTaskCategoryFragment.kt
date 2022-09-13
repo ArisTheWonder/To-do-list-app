@@ -7,7 +7,7 @@ class AddTaskCategoryFragment : TaskCategoryFragment() {
 
     override fun getTitleText(): String = "Create new list"
 
-    override fun getHitText(): String = "Enter list title"
+    override fun getHintText(): String = "Enter list title"
 
     override fun getTextInputDefaultValue(): String = ""
 

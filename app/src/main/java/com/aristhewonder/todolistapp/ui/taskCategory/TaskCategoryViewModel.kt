@@ -1,5 +1,6 @@
 package com.aristhewonder.todolistapp.ui.taskCategory
 
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.hilt.lifecycle.ViewModelInject
 import androidx.lifecycle.ViewModel
@@ -18,10 +19,11 @@ class TaskCategoryViewModel @ViewModelInject constructor(
     val state: TaskCategoryState
         get() = _state.value
 
-    val enteredCategoryName = mutableStateOf("")
+    private val _enteredCategoryName = mutableStateOf("")
+    val enteredCategoryName:State<String> = _enteredCategoryName
 
     fun onCategoryNameChanged(name: String) {
-        enteredCategoryName.value = name
+        _enteredCategoryName.value = name
     }
 
     fun onInsert(categoryName: String) {
