@@ -22,6 +22,10 @@ interface TaskDao {
     fun getTasksByCategoryId(categoryId: Long): Flow<List<Task>>
 
     @Transaction
+    @Query("SELECT * FROM task_table WHERE taskId = :taskId")
+    fun getTaskById(taskId: Long): Flow<Task>
+
+    @Transaction
     @Query("SELECT * FROM task_table")
     fun getAllTasks(): Flow<List<Task>>
 
@@ -39,5 +43,8 @@ interface TaskDao {
 
     @Update
     suspend fun updateTask(task: Task)
+
+    @Delete
+    suspend fun deleteTask(task: Task)
 
 }

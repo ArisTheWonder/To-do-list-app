@@ -11,8 +11,7 @@ class TaskRepository @Inject constructor(private val taskDao: TaskDao) {
 
     fun getAllTaskCategory() = taskDao.getAllTaskCategory()
 
-    fun getTasksByCategoryId(categoryId: Long) =
-        taskDao.getTasksByCategoryId(categoryId)
+    fun getTaskById(taskId: Long) = taskDao.getTaskById(taskId)
 
     fun getAllTasks() = taskDao.getAllTasks()
 
@@ -35,4 +34,9 @@ class TaskRepository @Inject constructor(private val taskDao: TaskDao) {
     suspend fun updateTask(task: Task) {
         taskDao.updateTask(task)
     }
+
+    suspend fun deleteTask(task: Task) {
+        taskDao.deleteTask(task)
+    }
+
 }

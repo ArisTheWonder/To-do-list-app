@@ -90,9 +90,14 @@ class TasksFragment : Fragment() {
                             }
                         }
                         BackPressHandler {
-                            coroutineScope.launch {
-                                bottomSheetState.hide()
+                            if (bottomSheetState.currentValue == ModalBottomSheetValue.Expanded){
+                                coroutineScope.launch {
+                                    bottomSheetState.hide()
+                                }
+                            } else {
+                                requireActivity().finish()
                             }
+
                         }
                         ModalBottomSheetLayout(
                             sheetElevation = 16.dp,
@@ -174,6 +179,9 @@ class TasksFragment : Fragment() {
                                                                         task,
                                                                         stared
                                                                     )
+                                                                },
+                                                                onTaskItemClicked = { task ->
+                                                                    navigateToEditTaskFragment(task.taskId)
                                                                 }
                                                             )
                                                         }
@@ -201,6 +209,11 @@ class TasksFragment : Fragment() {
         val destination = R.id.action_tasksFragment_to_editTaskCategoryFragment
         val bundle = bundleOf(Keys.TASK_CATEGORY to taskCategory)
         findNavController().navigate(destination, bundle)
+    }
+
+    private fun navigateToEditTaskFragment(taskId: Long) {
+        val action = TasksFragmentDirections.actionTasksFragmentToEditTaskFragment(taskId)
+        findNavController().navigate(action)
     }
 
     @Composable
@@ -251,7 +264,8 @@ class TasksFragment : Fragment() {
     @Composable
     fun BottomSheetContent() {
         var taskName by remember { mutableStateOf("") }
-        var stared by remember { mutableStateOf(false) }
+        val editableStarStatus = !viewModel.reserved.value
+        var stared by remember { mutableStateOf(!editableStarStatus) }
 
         fun insertTask() {
             viewModel.selectedTaskCategory.value?.let { taskCategory ->
@@ -299,7 +313,9 @@ class TasksFragment : Fragment() {
 
 
             StarCheckBox(checked = stared) {
-                stared = !stared
+                if (editableStarStatus) {
+                    stared = !stared
+                }
             }
 
             TextButton(

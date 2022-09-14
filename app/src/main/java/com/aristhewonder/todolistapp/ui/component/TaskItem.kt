@@ -1,5 +1,6 @@
 package com.aristhewonder.todolistapp.ui.component
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
@@ -14,6 +15,7 @@ fun TaskItem(
     task: Task,
     onTaskCompletedClicked: (task: Task) -> Unit,
     onTaskStaredClicked: (task: Task, stared: Boolean) -> Unit,
+    onTaskItemClicked: (task: Task) -> Unit,
 ) {
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -22,6 +24,7 @@ fun TaskItem(
             .fillMaxWidth()
             .padding(start = 8.dp, end = 8.dp, top = 8.dp)
             .height(48.dp)
+            .clickable { onTaskItemClicked.invoke(task) }
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             RadioButton(selected = task.completed, onClick = {

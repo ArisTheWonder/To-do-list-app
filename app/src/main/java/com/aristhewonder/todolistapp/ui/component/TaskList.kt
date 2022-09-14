@@ -18,6 +18,7 @@ fun TaskList(
     modifier: Modifier,
     onTaskCompletedClicked: (task: Task) -> Unit,
     onTaskStaredClicked: (task: Task, stared: Boolean) -> Unit,
+    onTaskItemClicked: (task: Task) -> Unit,
 ) {
     val scrollState = rememberLazyListState()
     LazyColumn(
@@ -27,11 +28,14 @@ fun TaskList(
     ) {
 
         itemsIndexed(tasks, key = { _, item -> item.taskId }) { _, task ->
-            Box(modifier = Modifier.animateItemPlacement().fillMaxWidth(),) {
+            Box(modifier = Modifier
+                .animateItemPlacement()
+                .fillMaxWidth()) {
                 TaskItem(
                     task = task,
                     onTaskCompletedClicked = onTaskCompletedClicked,
-                    onTaskStaredClicked = onTaskStaredClicked
+                    onTaskStaredClicked = onTaskStaredClicked,
+                    onTaskItemClicked = onTaskItemClicked
                 )
             }
         }

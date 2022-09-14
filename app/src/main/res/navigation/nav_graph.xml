@@ -15,6 +15,9 @@
         <action
             android:id="@+id/action_tasksFragment_to_addTaskCategoryFragment"
             app:destination="@id/addTaskCategoryFragment" />
+        <action
+            android:id="@+id/action_tasksFragment_to_editTaskFragment"
+            app:destination="@id/editTaskFragment" />
     </fragment>
     <fragment
         android:id="@+id/editTaskCategoryFragment"
@@ -23,5 +26,15 @@
     <fragment
         android:id="@+id/addTaskCategoryFragment"
         android:name="com.aristhewonder.todolistapp.ui.taskCategory.AddTaskCategoryFragment"
-        android:label="AddTaskCategoryFragment" />
+        android:label="AddTaskCategoryFragment" >
+    </fragment>
+    <fragment
+        android:id="@+id/editTaskFragment"
+        android:name="com.aristhewonder.todolistapp.ui.tasks.EditTaskFragment"
+        android:label="EditTaskFragment" >
+
+        <argument
+            android:name="task_id"
+            app:argType="long" />
+    </fragment>
 </navigation>

@@ -7,3 +7,5 @@ fun <T> T.isNotNull(): Boolean {
 fun <T> T.isNull(): Boolean {
     return this == null
 }
+
+fun <T> T?.or(another: T): T = this ?: another

@@ -12,8 +12,6 @@ import com.aristhewonder.todolistapp.util.PreferencesManager
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-
 
 class TasksViewModel @ViewModelInject constructor(
     private val repository: TaskRepository,
