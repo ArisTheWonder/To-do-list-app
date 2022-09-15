@@ -2,6 +2,7 @@ package com.aristhewonder.todolistapp.ui.component.tablayout
 
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,14 +21,9 @@ import kotlinx.coroutines.launch
 fun Tabs(
     pagerState: PagerState,
     items: List<TabItemModel>,
-    defaultSelectedItemIndex: Int,
     tabFooter: TabFooter? = null,
     onTabSelected: (index: Int) -> Unit
 ) {
-    val scope = rememberCoroutineScope()
-    LaunchedEffect(key1 = "scroll_to_index") {
-        pagerState.animateScrollToPage(defaultSelectedItemIndex)
-    }
     ScrollableTabRow(
         edgePadding = 8.dp,
         selectedTabIndex = pagerState.currentPage,
@@ -46,10 +42,12 @@ fun Tabs(
                 icon = item.icon,
                 selected = pagerState.currentPage == index
             ) {
+                onTabSelected.invoke(index)
+            /*
                 scope.launch {
                     onTabSelected.invoke(index)
                     pagerState.animateScrollToPage(index)
-                }
+                }*/
             }
         }
         tabFooter?.let { footer ->

@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
@@ -34,12 +35,12 @@ import com.aristhewonder.todolistapp.R
 import com.aristhewonder.todolistapp.data.entity.TaskCategory
 import com.aristhewonder.todolistapp.ui.component.*
 import com.aristhewonder.todolistapp.ui.component.tablayout.TabFooter
-import com.aristhewonder.todolistapp.ui.component.tablayout.TabItemModel
 import com.aristhewonder.todolistapp.ui.component.tablayout.TabLayout
-import com.aristhewonder.todolistapp.ui.tasks.TasksViewModel.TasksState.*
 import com.aristhewonder.todolistapp.ui.ui.theme.ToDoListAppTheme
 import com.aristhewonder.todolistapp.util.Keys
+import com.aristhewonder.todolistapp.util.extension.asTabItems
 import com.google.accompanist.pager.ExperimentalPagerApi
+import com.google.accompanist.pager.rememberPagerState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -67,6 +68,7 @@ class TasksFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         super.onCreateView(inflater, container, savedInstanceState)
+        viewModel.onCreateView()
         return ComposeView(requireContext()).apply {
             setContent {
                 ToDoListAppTheme {
@@ -90,7 +92,7 @@ class TasksFragment : Fragment() {
                             }
                         }
                         BackPressHandler {
-                            if (bottomSheetState.currentValue == ModalBottomSheetValue.Expanded){
+                            if (bottomSheetState.currentValue == ModalBottomSheetValue.Expanded) {
                                 coroutineScope.launch {
                                     bottomSheetState.hide()
                                 }
@@ -112,84 +114,99 @@ class TasksFragment : Fragment() {
                                 topBar = { AppBar() },
                                 floatingActionButtonPosition = FabPosition.Center,
                                 floatingActionButton = {
-                                    ExtendedFloatingActionButton(onClick = {
+                                    AddTaskFab {
                                         coroutineScope.launch {
                                             bottomSheetState.show()
                                         }
-
-                                    },
-                                        icon = {
-                                            Icon(
-                                                imageVector = Icons.Filled.Add,
-                                                contentDescription = "AddTask"
-                                            )
-                                        },
-                                        text = { Text(text = "Add new task") })
+                                    }
                                 },
                             ) {
-                                viewModel.taskCategories.value.let {
-                                    if (it.isNotEmpty()) {
-                                        val items = it.subList(1, it.size).map { taskCategory ->
-                                            TabItemModel(text = taskCategory.name)
-                                        }.toMutableList()
-                                        items.add(0, TabItemModel(icon = R.drawable.star_filled))
-                                        TabLayout(
-                                            items = items,
-                                            tabFooter = TabFooter(
-                                                text = "New list",
-                                                icon = R.drawable.plus
-                                            ) {
-                                                navigateToAddTaskCategoryFragment()
-                                            },
-                                            defaultSelectedItemIndex = viewModel.selectedIndex.value,
-                                            onTabSelected = { index ->
-                                                viewModel.onTaskCategorySelected(it[index], index)
-                                            },
-                                            tabContent = {
-                                                Box(modifier = Modifier.fillMaxSize()) {
-                                                    when (val state = viewModel.tasksState.value) {
-                                                        is Loading -> {
-                                                            CircularProgressIndicator(
-                                                                strokeWidth = 2.dp,
-                                                                modifier = Modifier
-                                                                    .align(Alignment.TopCenter)
-                                                                    .padding(8.dp)
-                                                                    .size(28.dp)
-                                                            )
-                                                        }
-                                                        is Empty -> {
-                                                            EmptyState(
-                                                                message = if (state.staredTasks)
-                                                                    "Not stared tasks.\nYou can mark your important tasks for easy access."
-                                                                else
-                                                                    "Not tasks yet.",
-                                                                modifier = Modifier
-                                                                    .align(Alignment.Center)
-                                                            )
-                                                        }
-                                                        is NotEmpty -> {
-                                                            TaskList(
-                                                                tasks = state.tasks,
-                                                                modifier = Modifier.align(Alignment.Center),
-                                                                onTaskCompletedClicked = { task ->
-                                                                    viewModel.onTaskCompleted(task)
-                                                                },
-                                                                onTaskStaredClicked = { task, stared ->
-                                                                    viewModel.onTaskStarStatusChanged(
-                                                                        task,
-                                                                        stared
-                                                                    )
-                                                                },
-                                                                onTaskItemClicked = { task ->
-                                                                    navigateToEditTaskFragment(task.taskId)
-                                                                }
-                                                            )
-                                                        }
-                                                        else -> {}
+                                var event by remember {
+                                    mutableStateOf<TasksViewModel.Events>(
+                                        TasksViewModel.Events.Idle
+                                    )
+                                }
+                                coroutineScope.launch {
+                                    viewModel.events.collect {
+                                        event = it
+                                    }
+                                }
+
+                                Box(modifier = Modifier.fillMaxSize()) {
+
+                                    AnimatedVisibility(visible = event is TasksViewModel.Events.Loading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.align(
+                                                Alignment.Center
+                                            )
+                                        )
+                                    }
+                                    when (event) {
+                                        is TasksViewModel.Events.Loading -> {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.align(
+                                                    Alignment.Center
+                                                )
+                                            )
+                                        }
+                                        is TasksViewModel.Events.DataUpdated -> {
+                                            val dataEvent =
+                                                (event as TasksViewModel.Events.DataUpdated)
+                                            val items = dataEvent.taskCategories.asTabItems()
+                                            val pagerState =
+                                                rememberPagerState(pageCount = items.size)
+                                            coroutineScope.launch {
+                                                pagerState.animateScrollToPage(dataEvent.index)
+                                            }
+                                            TabLayout(
+                                                items = items,
+                                                pagerState = pagerState,
+                                                tabFooter = TabFooter(
+                                                    text = "New list",
+                                                    icon = R.drawable.plus
+                                                ) {
+                                                    navigateToAddTaskCategoryFragment()
+                                                },
+                                                onTabSelected = { index ->
+                                                    viewModel.onCategoryChanged(newIndex = index)
+                                                },
+                                                tabContent = {
+                                                    if (dataEvent.tasks.isEmpty()) {
+                                                        EmptyState(
+                                                            message = if (dataEvent.staredTasks)
+                                                                "Not stared tasks.\nYou can mark your important tasks for easy access."
+                                                            else
+                                                                "Not tasks yet.",
+                                                            modifier = Modifier
+                                                                .align(Alignment.Center)
+                                                                .fillMaxSize()
+                                                        )
+                                                    } else {
+                                                        TaskList(
+                                                            tasks = dataEvent.tasks,
+                                                            modifier = Modifier.align(Alignment.Center),
+                                                            onTaskCompletedClicked = { task ->
+                                                                viewModel.onTaskCompleted(
+                                                                    task
+                                                                )
+                                                            },
+                                                            onTaskStaredClicked = { task, stared ->
+                                                                viewModel.onTaskStarStatusChanged(
+                                                                    task,
+                                                                    stared
+                                                                )
+                                                            },
+                                                            onTaskItemClicked = { task ->
+                                                                navigateToEditTaskFragment(
+                                                                    task.taskId
+                                                                )
+                                                            }
+                                                        )
                                                     }
                                                 }
-                                            }
-                                        )
+                                            )
+                                        }
+                                        else -> {}
                                     }
                                 }
                             }
@@ -199,7 +216,6 @@ class TasksFragment : Fragment() {
             }
         }
     }
-
 
     private fun navigateToAddTaskCategoryFragment() {
         findNavController().navigate(R.id.action_tasksFragment_to_addTaskCategoryFragment)
@@ -264,8 +280,7 @@ class TasksFragment : Fragment() {
     @Composable
     fun BottomSheetContent() {
         var taskName by remember { mutableStateOf("") }
-        val editableStarStatus = !viewModel.reserved.value
-        var stared by remember { mutableStateOf(!editableStarStatus) }
+        var stared by remember { mutableStateOf(false) }
 
         fun insertTask() {
             viewModel.selectedTaskCategory.value?.let { taskCategory ->
@@ -310,23 +325,20 @@ class TasksFragment : Fragment() {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-
-
-            StarCheckBox(checked = stared) {
-                if (editableStarStatus) {
-                    stared = !stared
-                }
+            var enabled = true
+            if (viewModel.reserved.value) {
+                stared = true
+                enabled = false
+            }
+            StarCheckBox(checked = stared, enabled = enabled) {
+                stared = !stared
             }
 
             TextButton(
                 enabled = taskName.isNotEmpty(),
                 onClick = { done() }
             ) {
-                if (viewModel.tasksState.value is InsertingNewTask) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                } else {
-                    Text(text = "Save")
-                }
+                Text(text = "Save")
             }
         }
 
@@ -355,6 +367,18 @@ class TasksFragment : Fragment() {
                 backCallback.remove()
             }
         }
+    }
+
+    @Composable
+    fun AddTaskFab(onClick: () -> Unit) {
+        ExtendedFloatingActionButton(onClick = onClick,
+            icon = {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "AddTask"
+                )
+            },
+            text = { Text(text = "Add new task") })
     }
 
 }

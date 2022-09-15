@@ -12,9 +12,10 @@ import com.aristhewonder.todolistapp.R
 @Composable
 fun StarCheckBox(
     checked: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
-    IconButton(onClick = onClick) {
+    IconButton(onClick = onClick, enabled = enabled) {
         val drawable = if (checked) {
             R.drawable.star_filled
         } else {

@@ -9,8 +9,12 @@ import com.aristhewonder.todolistapp.data.entity.Task
 import com.aristhewonder.todolistapp.data.entity.TaskCategory
 import com.aristhewonder.todolistapp.data.repository.TaskRepository
 import com.aristhewonder.todolistapp.util.PreferencesManager
+import com.aristhewonder.todolistapp.util.extension.filterByCategoryId
+import com.aristhewonder.todolistapp.util.extension.filterByStared
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 class TasksViewModel @ViewModelInject constructor(
@@ -18,8 +22,14 @@ class TasksViewModel @ViewModelInject constructor(
     private val preferencesManager: PreferencesManager
 ) : ViewModel() {
 
+    companion object {
+        const val STARED_TASK_CATEGORY_ID = 1L
+    }
+
+    private val eventsChannel = Channel<Events>()
+    val events = eventsChannel.receiveAsFlow()
+
     private val _taskCategories = mutableStateOf<List<TaskCategory>>(emptyList())
-    val taskCategories: State<List<TaskCategory>> = _taskCategories
 
     private val _selectedTaskCategory = mutableStateOf<TaskCategory?>(null)
     val selectedTaskCategory: State<TaskCategory?> = _selectedTaskCategory
@@ -27,75 +37,77 @@ class TasksViewModel @ViewModelInject constructor(
     private val _reserved = mutableStateOf(false)
     val reserved: State<Boolean> = _reserved
 
-    private val _tasksState = mutableStateOf<TasksState>(TasksState.Idle)
-    val tasksState: State<TasksState> = _tasksState
+    private val _selectedIndex = mutableStateOf<Int?>(null)
 
-    private val _selectedIndex = mutableStateOf(1)
-    val selectedIndex: State<Int> = _selectedIndex
+    private fun sendEvent(event: Events) = viewModelScope.launch {
+        eventsChannel.send(event)
+    }
 
-    init {
+    private fun changeIndex(index: Int) {
+        if (index != _selectedIndex.value) {
+            _selectedIndex.value = index
+        }
+    }
 
+    fun onCategoryChanged(newIndex: Int) {
+        updateTaskCategoryAndIndex(newIndex)
+    }
+
+    private fun updateTaskCategoryAndIndex(index: Int) {
+        val taskCategory = _taskCategories.value[index]
+        _selectedTaskCategory.value = taskCategory
+        _reserved.value = taskCategory.reserved
+        updateSelectedTaskCategoryIndex(index = index)
+    }
+
+    fun onCreateView() {
         viewModelScope.launch {
+            sendEvent(Events.Loading)
             combine(
-                repository.getAllTaskCategory(),
                 preferencesManager.preferencesFlow,
+                repository.getAllTaskCategory(),
                 repository.getAllTasks()
-            ) { categories, userPreferences, tasks ->
-                _taskCategories.value = categories
-                userPreferences.selectedTaskCategoryIndex?.let { index ->
-                    if (index < categories.size) {
-                        val category = categories[index]
-                        selectTaskCategory(category)
-                        _selectedIndex.value = index
-                        val staredCategory = category.categoryId == 1L
-                        val filteredTasks = if (staredCategory) {
-                            tasks.filter {
-                                it.stared
-                            }.filter {
-                                !it.completed
-                            }.sortedByDescending { it.creationDate }
-                        } else {
-                            tasks.filter {
-                                it.categoryId == category.categoryId
-                            }.filter {
-                                !it.completed
-                            }.sortedByDescending { it.creationDate }
-                        }
-                        _tasksState.value = if (filteredTasks.isEmpty()) {
-                            TasksState.Empty(staredTasks = staredCategory)
-                        } else {
-                            TasksState.NotEmpty(tasks = filteredTasks, staredTasks = staredCategory)
-                        }
+            ) { userPreferences, taskCategories, tasks ->
+                val index = userPreferences.selectedTaskCategoryIndex
+                if (index > taskCategories.size - 1) {
+                    return@combine
+                }
+                changeIndex(index = index)
+
+                with(taskCategories) {
+                    if (isNotEmpty()) {
+                        _taskCategories.value = this
+                        val categoryId = taskCategories[index].categoryId
+                        val stared = categoryId == STARED_TASK_CATEGORY_ID
+                        val filteredTasks = if (stared)
+                            tasks.filterByStared()
+                        else
+                            tasks.filterByCategoryId(categoryId)
+                        sendEvent(
+                            Events.DataUpdated(
+                                taskCategories = this,
+                                tasks = filteredTasks,
+                                index = index,
+                                staredTasks = stared
+                            )
+                        )
                     }
                 }
             }.collect()
         }
     }
 
-    fun onTaskCategorySelected(taskCategory: TaskCategory, selectedIndex: Int) {
-        if (selectedIndex == _selectedIndex.value) {
-            return
-        }
-        selectTaskCategory(taskCategory)
-        _tasksState.value = TasksState.Loading
-        viewModelScope.launch {
-            updateSelectedTaskCategoryIndex(selectedIndex)
-        }
-    }
-
     private fun updateSelectedTaskCategoryIndex(index: Int) {
         viewModelScope.launch {
-            preferencesManager.updateSelectedTaskCategoryIndex(index)
+            preferencesManager.setSelectedTaskCategoryIndex(index)
         }
     }
 
     fun onDeleteTaskCategory() {
-        _selectedTaskCategory.value?.let {
-            val index = _selectedIndex.value - 1
-            updateSelectedTaskCategoryIndex(index)
-            _selectedIndex.value = index
-            deleteTaskCategory(taskCategory = it)
-        }
+        val taskCategory = _selectedTaskCategory.value!!
+        val index = _selectedIndex.value!! - 1
+        deleteTaskCategory(taskCategory)
+        updateTaskCategoryAndIndex(index)
     }
 
     fun onTaskStarStatusChanged(task: Task, stared: Boolean) {
@@ -103,22 +115,15 @@ class TasksViewModel @ViewModelInject constructor(
     }
 
     fun onInsertTask(taskName: String, categoryId: Long, stared: Boolean) {
-        _tasksState.value = TasksState.InsertingNewTask
         viewModelScope.launch {
             insertTask(
                 task = Task(name = taskName, categoryId = categoryId, stared = stared)
             )
         }
-        _tasksState.value = TasksState.Idle
     }
 
     fun onTaskCompleted(task: Task) {
         updateTask(task.copy(completed = true))
-    }
-
-    private fun selectTaskCategory(taskCategory: TaskCategory) {
-        _selectedTaskCategory.value = taskCategory
-        _reserved.value = taskCategory.reserved
     }
 
     private fun deleteTaskCategory(taskCategory: TaskCategory) {
@@ -137,12 +142,14 @@ class TasksViewModel @ViewModelInject constructor(
         repository.insertTask(task)
     }
 
-    sealed class TasksState {
-        object Idle : TasksState()
-        object Loading : TasksState()
-        object InsertingNewTask : TasksState()
-        data class Empty(val staredTasks: Boolean) : TasksState()
-        data class NotEmpty(val tasks: List<Task>, val staredTasks: Boolean) : TasksState()
+    sealed class Events {
+        object Idle : Events()
+        object Loading : Events()
+        data class DataUpdated(
+            val taskCategories: List<TaskCategory>,
+            val tasks: List<Task>,
+            val index: Int,
+            val staredTasks: Boolean
+        ) : Events()
     }
-
 }
