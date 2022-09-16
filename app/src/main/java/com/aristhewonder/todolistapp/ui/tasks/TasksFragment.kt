@@ -79,10 +79,15 @@ class TasksFragment : Fragment() {
                         val keyboardController = LocalSoftwareKeyboardController.current
                         focusRequester = remember { FocusRequester() }
 
+                        var taskName by remember { mutableStateOf("") }
+                        var taskStared by remember { mutableStateOf(false) }
+
                         LaunchedEffect(bottomSheetState.currentValue) {
                             when (bottomSheetState.currentValue) {
                                 ModalBottomSheetValue.Hidden -> {
                                     keyboardController?.hide()
+                                    taskName = ""
+                                    taskStared = false
                                 }
                                 ModalBottomSheetValue.Expanded -> {
                                     focusRequester.requestFocus()
@@ -107,9 +112,20 @@ class TasksFragment : Fragment() {
                             sheetBackgroundColor = Color.White,
                             sheetState = bottomSheetState,
                             sheetContent = {
-                                BottomSheetContent()
+                                BottomSheetContent(
+                                    taskName = taskName,
+                                    stared = taskStared,
+                                    reserved = viewModel.reserved.value,
+                                    onNameChanged = { name -> taskName = name },
+                                    onStarStatusChanged = { stared -> taskStared = stared },
+                                    onDone = {
+                                        coroutineScope.launch {
+                                            bottomSheetState.hide()
+                                        }
+                                    })
                             }
                         ) {
+
                             Scaffold(
                                 topBar = { AppBar() },
                                 floatingActionButtonPosition = FabPosition.Center,
@@ -179,7 +195,6 @@ class TasksFragment : Fragment() {
                                                                 "Not tasks yet.",
                                                             modifier = Modifier
                                                                 .align(Alignment.Center)
-                                                                .fillMaxSize()
                                                         )
                                                     } else {
                                                         TaskList(
@@ -276,29 +291,25 @@ class TasksFragment : Fragment() {
         }
     }
 
-    @OptIn(ExperimentalMaterialApi::class)
     @Composable
-    fun BottomSheetContent() {
-        var taskName by remember { mutableStateOf("") }
-        var stared by remember { mutableStateOf(false) }
+    fun BottomSheetContent(
+        taskName: String,
+        stared: Boolean,
+        reserved: Boolean,
+        onNameChanged: (name: String) -> Unit,
+        onStarStatusChanged: (stared: Boolean) -> Unit,
+        onDone: () -> Unit
+    ) {
+
 
         fun insertTask() {
             viewModel.selectedTaskCategory.value?.let { taskCategory ->
                 viewModel.onInsertTask(
                     taskName = taskName,
                     categoryId = taskCategory.categoryId,
-                    stared = stared
+                    stared = if (reserved) true else stared
                 )
             }
-        }
-
-        fun done() {
-            insertTask()
-            coroutineScope.launch {
-                bottomSheetState.hide()
-            }
-            taskName = ""
-            stared = false
         }
 
         Column(
@@ -308,11 +319,12 @@ class TasksFragment : Fragment() {
         ) {
             CustomTextField(
                 onDone = {
-                    done()
+                    insertTask()
+                    onDone.invoke()
                 },
                 text = taskName,
                 onValueChange = {
-                    taskName = it
+                    onNameChanged.invoke(it)
                 },
                 hintText = "New task",
                 focusRequester = focusRequester
@@ -325,18 +337,16 @@ class TasksFragment : Fragment() {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            var enabled = true
-            if (viewModel.reserved.value) {
-                stared = true
-                enabled = false
-            }
-            StarCheckBox(checked = stared, enabled = enabled) {
-                stared = !stared
+            StarCheckBox(checked = if (reserved) true else stared, enabled = !reserved) {
+                onStarStatusChanged.invoke(!stared)
             }
 
             TextButton(
                 enabled = taskName.isNotEmpty(),
-                onClick = { done() }
+                onClick = {
+                    insertTask()
+                    onDone.invoke()
+                }
             ) {
                 Text(text = "Save")
             }
@@ -371,14 +381,12 @@ class TasksFragment : Fragment() {
 
     @Composable
     fun AddTaskFab(onClick: () -> Unit) {
-        ExtendedFloatingActionButton(onClick = onClick,
-            icon = {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = "AddTask"
-                )
-            },
-            text = { Text(text = "Add new task") })
+        FloatingActionButton(onClick = onClick, backgroundColor = MaterialTheme.colors.primary) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = "AddTask"
+            )
+        }
     }
 
 }
